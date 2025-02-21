@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Transportation Blockchain Dashboard</title>
+    <!-- Include Chart.js CDN for charting capabilities -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Basic CSS styling for the dashboard */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .headline {
+            background-color: #333;
+            padding: 20px;
+            text-align: center;
+        }
+        .headline h1 {
+            margin: 0;
+            font-size: 2.5em;
+            color: white;
+        }
+
+        h2 {
+            color: white;
+            margin-top: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            table-layout: fixed;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #444;
+            text-align: left;
+            white-space: pre-wrap;    
+            word-wrap: break-word;   
+            overflow-wrap: break-word;
+        }
+
+        th {
+            background-color: #222;
+        }
+
+        canvas {
+            display: block;
+            max-width: 800px;
+            max-height: 400px;
+            margin: 20px auto 0 auto;
+            background-color: #222;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        form {
+            margin-top: 30px;
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 600px; 
+            margin-left: auto; 
+            margin-right: auto;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            background-color: #333;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: orange;
+            color: black;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background-color: #ffa500;
+        }
+
+        #predictionResult {
+            margin-top: 20px;
+            background-color: #222;
+            padding: 20px;
+            border-radius: 10px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div>
+        <h1>Transportation Blockchain Dashboard</h1>
+    </div>
+    
+    <h2>Blockchain Ledger</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Block Index</th>
+                <th>Timestamp</th>
+                <th>Delay Data</th>
+                <th>Previous Hash</th>
+                <th>Current Hash</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for block in chain %}
+            <tr>
+                <td>{{ block.index }}</td>
+                <td>{{ block.timestamp }}</td>
+                <td>{{ block.delay_data }}</td>
+                <td>{{ block.previous_hash }}</td>
+                <td>{{ block.hash }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Average Delay Trend Over Time</h2>
+    <canvas id="delayTrendChart" width="800" height="400"></canvas>
+
+    <h2>Make a Prediction</h2>
+    <form id="predictForm">
+        <label for="Route">Route:</label>
+        <input type="text" id="Route" name="Route" placeholder="e.g., Bus-5A" required>
+        
+        <label for="Day">Day:</label>
+        <select id="Day" name="Day" required>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+        </select>
+    
+        <label for="Incident">Incident:</label>
+        <select id="Incident" name="Incident" required>
+            <option value="Vision">Vision</option>
+            <option value="General Delay">General Delay</option>
+            <option value="Security">Security</option>
+            <option value="Operations - Operator">Operations - Operator</option>
+            <option value="Emergency Services">Emergency Services</option>
+            <option value="Utilized Off Route">Utilized Off Route</option>
+            <option value="Cleaning - Unsanitary">Cleaning - Unsanitary</option>
+            <option value="Diversion">Diversion</option>
+            <option value="Mechanical">Mechanical</option>
+            <option value="Collision - TTC">Collision - TTC</option>
+            <option value="Investigation">Investigation</option>
+            <option value="Road Blocked - NON-TTC Collision">Road Blocked - NON-TTC Collision</option>
+        </select>
+    
+        <label for="Direction">Direction:</label>
+        <input type="text" id="Direction" name="Direction" placeholder="e.g., N" required>
+        
+        <button type="submit">Predict Delay</button>
+    </form>
+
+    <h2>Prediction Result</h2>
+    <pre id="predictionResult"></pre>
+</div>
+
+<script>
+// Fetch and Render Delay Trend Data
+fetch("/delay_trends")
+  .then((response) => response.json())
+  .then((data) => {
+    const ctx = document.getElementById("delayTrendChart").getContext("2d");
+    const delayTrendChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: data.labels,
+        datasets: [{
+          label: "Average Delay (minutes)",
+          data: data.averageDelays,
+          backgroundColor: "rgba(255, 165, 0, 0.2)",
+          borderColor: "orange",
+          borderWidth: 2,
+          tension: 0.3,
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "Delay (minutes)",
+                  color: "white",
+                },
+                ticks: {
+                  color: "white",
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.1)",
+                },
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: "Day of the Week",
+                  color: "white",
+                },
+                ticks: {
+                  color: "white",
+                },
+                grid: {
+                  color: "rgba(255, 255, 255, 0.1)",
+                },
+              },
+            },
+            plugins: {
+              title: {
+                display: true,
+                text: "Average Delay Trend Over the Week",
+                color: "white",
+                font: {
+                  size: 18,
+                },
+              },
+              legend: {
+                labels: {
+                  color: "white",
+                },
+              },
+            },
+          },
+        });
+  })
+  .catch((error) => console.error("Error fetching delay trend data:", error));
+
+// Handle Prediction Form Submission
+document.getElementById("predictForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const data = {
+    Route: document.getElementById("Route").value,
+    Day: document.getElementById("Day").value,
+    Incident: document.getElementById("Incident").value,
+    Direction: document.getElementById("Direction").value,
+  };
+
+  fetch("/predict", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  .then((response) => response.json())
+        .then((result) => {
+          const formattedResult = Object.entries(result)
+            .map(([key, value]) => {
+              return `${key.replace(/_/g, " ").replace(/\\b\\w/g, (l) => l.toUpperCase())}: ${value}`;
+            })
+            .join("\\n");
+          document.getElementById("predictionResult").innerText = formattedResult;
+        })
+        .catch((error) => {
+          document.getElementById("predictionResult").innerText = "Error: " + error;
+        });
+});
+</script>
+</body>
+</html>
